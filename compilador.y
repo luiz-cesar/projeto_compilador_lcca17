@@ -12,18 +12,19 @@
 #include "compilador.h"
 #include "stack.h"
 
-
-
+int yylex();
+void yyerror(const char *s);
 
 int num_vars;
 char aux_string[128];
 
 // Implementar nivel lexico em stack
-int nivel_lexico, deslocamento_variavel;
+int nivel_lexico = -1;
 
 id l_elem, elem_aux;
 
 tipo_expressao pilha_expressao = NULL;
+tipo_rotulo pilha_rotulos = NULL;
 
 
 %}
@@ -35,6 +36,7 @@ tipo_expressao pilha_expressao = NULL;
 %token IGUAL DIFERENTE MENOR MENOR_IGUAL MAIOR MAIOR_IGUAL
 %token IF THEN ELSE WHILE DO
 %token AND OR
+%token PROCEDURE
 
 %%
 
@@ -43,20 +45,28 @@ programa:
    PROGRAM IDENT
    ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
    bloco PONTO
-   {geraCodigo (NULL, "PARA"); /* DESALOCAR VARIAVEIS */ }
+   {
+      sprintf(aux_string, "DMEM  %d", encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      geraCodigo(NULL, aux_string);
+      free_simbolo_na_tabela(encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      geraCodigo (NULL, "PARA");
+   }
 ;
 
 bloco:
    {
-      deslocamento_variavel = 0;
       ++nivel_lexico;
    }
    parte_declaracoes
    comando_composto
+   {
+      --nivel_lexico;
+   }
 ;
 
 parte_declaracoes:
-   // parte_declaracoes |
+   parte_declaracoes |
+   parte_declara_subrotinas |
    parte_declara_vars
 ;
 
@@ -93,13 +103,13 @@ tipo:
 lista_id_var:
    lista_id_var VIRGULA IDENT
    {
-      insere_vs_tabela(token, nivel_lexico, deslocamento_variavel);
-      ++num_vars;++deslocamento_variavel;
+      insere_vs_tabela(token, nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      ++num_vars;
    } |
    IDENT
    {
-      insere_vs_tabela(token, nivel_lexico, deslocamento_variavel);
-      ++num_vars;++deslocamento_variavel;
+      insere_vs_tabela(token, nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      ++num_vars;
    }
 ;
 
@@ -107,6 +117,14 @@ lista_idents:
    lista_idents VIRGULA IDENT |
    IDENT
 ;
+
+parte_declara_subrotinas:
+   // declara_funcao |
+   declara_procedimento
+;
+
+declara_procedimento:
+   PROCEDURE IDENT parametros_formais bloco;
 
 
 comando_composto:
@@ -140,16 +158,27 @@ atribuicao:
    }
    ATRIBUICAO expressao_simples {
       // ADICIONAR ERRO CASO SIMBOLOS DE TIPOS DIFERENTES
-      if(encontra_tipo(l_elem) == pilha_expressao->tipo)
-         free(stack_pop((stack_t **)&pilha_expressao));
+      if(encontra_tipo(l_elem) != pilha_expressao->tipo)
+         imprimeErro("os tipos de variavel nao coincidem");
+      free(stack_pop((stack_t **)&pilha_expressao));
       sprintf(aux_string, "ARMZ %d,%d", l_elem->info_variavel.nivel_lexico, l_elem->info_variavel.deslocamento);
       geraCodigo(NULL, aux_string);
+
    }
 ;
 
 expressao:
-   expressao_simples |
-   relacao
+   expressao_simples {
+      if(pilha_expressao->tipo != booleano)
+         imprimeErro("a expressao deve retornar um booleano");
+      free(stack_pop((stack_t **)&pilha_expressao));
+      ;
+   } |
+   relacao {
+      if(pilha_expressao->tipo != booleano)
+         imprimeErro("a expressao deve retornar um booleano");
+      free(stack_pop((stack_t **)&pilha_expressao));
+   }
 ;
 
 relacao:
@@ -228,47 +257,58 @@ fator:
 
 comando_condicional:
    IF expressao {
-      sprintf(aux_string, "DSVF %s", gera_rotulo());
+      GERA_E_EMPILHA_ROTULO
+      sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    }
    THEN comando_sem_rotulo {
-      // R00: NADA
+      geraCodigo(pilha_rotulos->rotulo, "NADA");
+      DESEMPILHA_ROTULO
    } |
    IF expressao {
-      sprintf(aux_string, "DSVF %s", gera_rotulo());
+      GERA_E_EMPILHA_ROTULO
+      sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    }
    THEN comando_sem_rotulo {
-      sprintf(aux_string, "DSVS %s", gera_rotulo());
+      GERA_E_EMPILHA_ROTULO
+      sprintf(aux_string, "DSVS %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    } ELSE {
-      // R00: NADA
+      geraCodigo(pilha_rotulos->next->rotulo, "NADA");
    } comando_sem_rotulo {
-      // R01: NADA
+      geraCodigo(pilha_rotulos->rotulo, "NADA");
+      DESEMPILHA_ROTULO
+      DESEMPILHA_ROTULO
    }
 ;
 
 comando_repetitivo:
    WHILE {
+      GERA_E_EMPILHA_ROTULO
       sprintf(aux_string, "NADA");
-      // TEM Q SALVAR O ROTULO NA PILHA
-      geraCodigo(gera_rotulo(), aux_string);
+      geraCodigo(pilha_rotulos->rotulo, aux_string);
    }
    expressao {
-      sprintf(aux_string, "DSVF %s", gera_rotulo());
+      GERA_E_EMPILHA_ROTULO
+      sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    }
-   DO comando_sem_rotulo
+   DO comando_sem_rotulo {
+      sprintf(aux_string, "DSVS %s", pilha_rotulos->next->rotulo);
+      geraCodigo(NULL, aux_string);
+      geraCodigo(pilha_rotulos->rotulo, "NADA");
+      DESEMPILHA_ROTULO
+      DESEMPILHA_ROTULO
+   }
 ;
 
 %%
 
-main (int argc, char** argv) {
+int main (int argc, char** argv) {
    FILE* fp;
    extern FILE* yyin;
 
-   deslocamento_variavel = 0;
-   nivel_lexico = -1;
 
    if (argc<2 || argc>2) {
          printf("usage compilador <arq>a %d\n", argc);

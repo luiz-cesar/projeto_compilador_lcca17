@@ -61,7 +61,7 @@ void geraCodigo(char *rot, char *comando)
 
   if (rot == NULL)
   {
-    fprintf(fp, "     %s\n", comando);
+    fprintf(fp, "      %s\n", comando);
     fflush(fp);
   }
   else
@@ -86,7 +86,7 @@ char *gera_rotulo()
 }
 
 /* -------------------------------------------------------------------
-* procedimentos de insercao na tabela de simbolos
+* procedimentos de insercao e remocao na tabela de simbolos
 * ------------------------------------------------------------------- */
 
 int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento)
@@ -115,9 +115,33 @@ int insere_procedimento_tabela(char *ident, char *rotulo, int nivel_lexico)
   return 1;
 }
 
+// int desaloca_procedimento_tabela(){
+//   id simbolo = tabela_de_simbolos;
+// }
+
 /* -------------------------------------------------------------------
 * procedimentos genericos da tabela de simbolos
 * ------------------------------------------------------------------- */
+
+// Libera o simbolo da tabela dependendo do seu tipo
+void free_simbolo_na_tabela(int qtd)
+{
+  id simb;
+  for (int i = 0; i < qtd; ++i)
+  {
+    simb = (struct t_id *)stack_pop((stack_t **)&tabela_de_simbolos);
+
+    switch (simb->tipo)
+    {
+    case variavel_simples:
+      break;
+    default:
+      break;
+    }
+    free(simb->nome);
+    free(simb);
+  }
+}
 
 id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo)
 {
@@ -153,4 +177,18 @@ tipos_var encontra_tipo(id simb)
 {
   if (simb->tipo == variavel_simples)
     return simb->info_variavel.tipo_variavel;
+}
+
+int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo)
+{
+  int num_simbolos_ultima_funcao = 0;
+
+  id simbolo = tabela_de_simbolos;
+  while (simbolo && simbolo->tipo != procedimento)
+  {
+    if (simbolo->tipo == tipo_simbolo)
+      ++num_simbolos_ultima_funcao;
+    simbolo = simbolo->next;
+  }
+  return num_simbolos_ultima_funcao;
 }

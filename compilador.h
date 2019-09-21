@@ -14,15 +14,23 @@
 #define TAM_TOKEN 16
 
 #define COMPARA_T_EXPRESSAO_E_POP                           \
-  if (pilha_expressao->tipo == pilha_expressao->next->tipo) \
-    free(stack_pop((stack_t **)&pilha_expressao));
+  if (pilha_expressao->tipo != pilha_expressao->next->tipo) \
+    imprimeErro("os tipos de variavel nao coincidem");      \
+  free(stack_pop((stack_t **)&pilha_expressao));
 
 #define COMPARA_T_RELACAO_BOOLEANA_E_POP                    \
-  if (pilha_expressao->tipo == pilha_expressao->next->tipo) \
-  {                                                         \
-    free(stack_pop((stack_t **)&pilha_expressao));          \
-    pilha_expressao->tipo = booleano;                       \
-  }
+  if (pilha_expressao->tipo != pilha_expressao->next->tipo) \
+    imprimeErro("os tipos de variavel nao coincidem");      \
+  free(stack_pop((stack_t **)&pilha_expressao));            \
+  pilha_expressao->tipo = booleano;
+
+#define GERA_E_EMPILHA_ROTULO                                                   \
+  stack_push((stack_t **)&pilha_rotulos, malloc(sizeof(struct t_tipo_rotulo))); \
+  pilha_rotulos->rotulo = gera_rotulo();
+
+#define DESEMPILHA_ROTULO      \
+  free(pilha_rotulos->rotulo); \
+  free(stack_pop((stack_t **)&pilha_rotulos));
 
 // Enumeracao dos simbolos lidos pelo compilador
 typedef enum simbolos
@@ -57,6 +65,7 @@ typedef enum simbolos
   simb_maior_igual,
   simb_or,
   simb_and,
+  simb_procedure,
 } simbolos;
 
 /*********** DEFINICOES PARA VARIAVEIS SIMPLES ***********/
@@ -83,6 +92,9 @@ typedef struct
 {
   char *rotulo;
   int nivel_lexico;
+  int qtd_variaveis_simples;
+  int qtd_procedimentos_e_funcoes;
+  int qtd_parametros;
 } t_procedimento;
 
 /*********** DEFINICOES PARA TABELA DE SIMBOLOS **********/
@@ -106,13 +118,19 @@ typedef struct t_id
   };
 } * id;
 
-/*********** DEFINICOES PARA FILAS **********/
+/*********** DEFINICOES PARA PILHAS **********/
 
 typedef struct t_tipo_expressao
 {
   struct t_tipo_expressao *next;
   tipos_var tipo;
 } * tipo_expressao;
+
+typedef struct t_tipo_rotulo
+{
+  struct t_tipo_rotulo *next;
+  char *rotulo;
+} * tipo_rotulo;
 
 /* -------------------------------------------------------------------
 * prototipo de funcoes
@@ -126,11 +144,15 @@ char *gera_rotulo();
 
 int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento);
 
+void free_simbolo_na_tabela(int qtd);
+
 id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo);
 
 void altera_tipo_tabela(tipos_simbolo tipo_var, int qtd_simbolos);
 
 tipos_var encontra_tipo(id simb);
+
+int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo);
 
 /* -------------------------------------------------------------------
 * variaveis globais

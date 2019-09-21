@@ -20,13 +20,6 @@ void stack_push(stack_t **stack, stack_t *elem)
         return;
     }
 
-    // se o elemento estiver em outra pilha
-    if (elem->next != NULL)
-    {
-        printf("ERRO: nao eh possivel inserir o elemento na pilha pois pertence a outra pilha.\n");
-        return;
-    }
-
     // se a pilha estiver vazia, recebe o primeiro elemento
     if ((*stack) == NULL)
     {

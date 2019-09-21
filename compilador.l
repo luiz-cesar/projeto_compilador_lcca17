@@ -236,6 +236,13 @@ and  {
           return AND;
 }
 
+procedure {
+    simbolo = simb_procedure;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" procedure ");
+          return PROCEDURE;
+}
+
 {ident} {
     simbolo = simb_identificador;
     strncpy (token, yytext, TAM_TOKEN);
