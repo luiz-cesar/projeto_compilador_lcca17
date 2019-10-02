@@ -144,6 +144,8 @@ char *gera_rotulo();
 
 int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento);
 
+int insere_procedimento_tabela(char *ident, int nivel_lexico);
+
 void free_simbolo_na_tabela(int qtd);
 
 id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo);

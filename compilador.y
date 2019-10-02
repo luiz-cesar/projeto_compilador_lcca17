@@ -44,11 +44,7 @@ programa:
    {geraCodigo (NULL, "INPP");}
    PROGRAM IDENT
    ABRE_PARENTESES lista_idents FECHA_PARENTESES PONTO_E_VIRGULA
-   bloco PONTO
-   {
-      sprintf(aux_string, "DMEM  %d", encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
-      geraCodigo(NULL, aux_string);
-      free_simbolo_na_tabela(encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+   bloco PONTO {
       geraCodigo (NULL, "PARA");
    }
 ;
@@ -61,22 +57,20 @@ bloco:
    comando_composto
    {
       --nivel_lexico;
+
+      sprintf(aux_string, "DMEM  %d", encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      geraCodigo(NULL, aux_string);
+      free_simbolo_na_tabela(encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
    }
 ;
 
 parte_declaracoes:
-   parte_declaracoes |
-   parte_declara_subrotinas |
-   parte_declara_vars
+   parte_declaracoes parte_declara_subrotinas |
+   parte_declaracoes parte_declara_vars |
 ;
 
 parte_declara_vars:
-   var
-;
-
-var:
-   {}
-   VAR declara_vars|
+   VAR declara_vars
 ;
 
 declara_vars:
@@ -124,8 +118,37 @@ parte_declara_subrotinas:
 ;
 
 declara_procedimento:
-   PROCEDURE IDENT parametros_formais bloco;
+   PROCEDURE
+   IDENT {
+      GERA_E_EMPILHA_ROTULO
+      sprintf(aux_string, "DSVS %s", pilha_rotulos->rotulo);
+      geraCodigo(NULL, aux_string);
+      insere_procedimento_tabela(token, nivel_lexico+1);
+      sprintf(aux_string, "ENPR %d", nivel_lexico);
+      geraCodigo(tabela_de_simbolos->info_procedimento.rotulo, aux_string);
+   }
+   declara_parametros PONTO_E_VIRGULA bloco {
+      sprintf(aux_string, "RTPR %d, n", nivel_lexico);
+      geraCodigo(NULL, aux_string);
 
+      geraCodigo(pilha_rotulos->rotulo, "NADA");
+      DESEMPILHA_ROTULO
+   }
+;
+
+declara_parametros:
+   ABRE_PARENTESES parametros_formais FECHA_PARENTESES |
+;
+
+parametros_formais:
+   parametros_formais PONTO_E_VIRGULA secao_de_parametros_formais |
+   secao_de_parametros_formais
+;
+
+secao_de_parametros_formais:
+   VAR lista_idents DOIS_PONTOS IDENT |
+   lista_idents DOIS_PONTOS IDENT
+;
 
 comando_composto:
    T_BEGIN comandos T_END
@@ -142,21 +165,46 @@ comando:
 ;
 
 comando_sem_rotulo:
-   atribuicao |
+   IDENT {strcpy(aux_string, token);} comando_com_ident |
    comando_condicional |
    comando_repetitivo |
    comando_composto
 ;
 
-atribuicao:
-   IDENT {
-      l_elem = busca_simbolo_na_tabela(token, variavel_simples);
+comando_com_ident:
+   atribuicao |
+   chamada_procedimento
+;
+
+chamada_procedimento:
+   {
+      l_elem = busca_simbolo_na_tabela(aux_string, procedimento);
       if(!l_elem){
-         sprintf(aux_string, "A variavel %s nao foi encontrada", "token");
+         sprintf(aux_string, "O procedimento %s nao foi encontrada", aux_string);
          imprimeErro(aux_string);
       }
-   }
-   ATRIBUICAO expressao_simples {
+      sprintf(aux_string, "CHPR %s, %d", l_elem->info_procedimento.rotulo, nivel_lexico);
+      geraCodigo(NULL, aux_string);
+   } lista_parametros
+;
+
+lista_parametros:
+   ABRE_PARENTESES lista_de_expressoes FECHA_PARENTESES |
+;
+
+lista_de_expressoes:
+   lista_de_expressoes VIRGULA expressao |
+   expressao
+;
+
+atribuicao:
+   ATRIBUICAO {
+      l_elem = busca_simbolo_na_tabela(aux_string, variavel_simples);
+      if(!l_elem){
+         sprintf(aux_string, "A variavel %s nao foi encontrada", aux_string);
+         imprimeErro(aux_string);
+      }
+   } expressao_simples {
       // ADICIONAR ERRO CASO SIMBOLOS DE TIPOS DIFERENTES
       if(encontra_tipo(l_elem) != pilha_expressao->tipo)
          imprimeErro("os tipos de variavel nao coincidem");
@@ -261,27 +309,30 @@ comando_condicional:
       sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    }
-   THEN comando_sem_rotulo {
-      geraCodigo(pilha_rotulos->rotulo, "NADA");
-      DESEMPILHA_ROTULO
-   } |
    IF expressao {
       GERA_E_EMPILHA_ROTULO
       sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    }
-   THEN comando_sem_rotulo {
+   THEN comando_sem_rotulo continuacao_condicional
+;
+
+continuacao_condicional:
+   ELSE {
       GERA_E_EMPILHA_ROTULO
       sprintf(aux_string, "DSVS %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
-   } ELSE {
       geraCodigo(pilha_rotulos->next->rotulo, "NADA");
    } comando_sem_rotulo {
       geraCodigo(pilha_rotulos->rotulo, "NADA");
       DESEMPILHA_ROTULO
       DESEMPILHA_ROTULO
+   } | {
+      geraCodigo(pilha_rotulos->rotulo, "NADA");
+      DESEMPILHA_ROTULO
    }
 ;
+
 
 comando_repetitivo:
    WHILE {

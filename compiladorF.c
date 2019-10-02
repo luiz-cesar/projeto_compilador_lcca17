@@ -102,8 +102,10 @@ int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento)
   return 1;
 }
 
-int insere_procedimento_tabela(char *ident, char *rotulo, int nivel_lexico)
+int insere_procedimento_tabela(char *ident, int nivel_lexico)
 {
+  char *rotulo = gera_rotulo();
+
   EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
 
   simbolo->tipo = procedimento;
