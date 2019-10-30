@@ -2,7 +2,6 @@
 // Testar se funciona corretamente o empilhamento de par�metros
 // passados por valor ou por refer�ncia.
 
-
 %{
 
 #include <stdio.h>
@@ -11,6 +10,7 @@
 #include <string.h>
 #include "compilador.h"
 #include "stack.h"
+#define YYSTYPE long int
 
 int yylex();
 void yyerror(const char *s);
@@ -25,6 +25,10 @@ id l_elem, elem_aux;
 
 tipo_expressao pilha_expressao = NULL;
 tipo_rotulo pilha_rotulos = NULL;
+
+tipos_parametro tipo_parametro;
+
+tipo_pilha_procedimentos pilha_procedimentos = NULL;
 
 
 %}
@@ -56,11 +60,10 @@ bloco:
    parte_declaracoes
    comando_composto
    {
-      --nivel_lexico;
-
-      sprintf(aux_string, "DMEM  %d", encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      sprintf(aux_string, "DMEM  %d", encontra_qtd_simbolos_antes_de_funcao(variavel_simples, nivel_lexico));
       geraCodigo(NULL, aux_string);
-      free_simbolo_na_tabela(encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      libera_simbolos_internos_de_funcao(nivel_lexico);
+      --nivel_lexico;
    }
 ;
 
@@ -97,19 +100,27 @@ tipo:
 lista_id_var:
    lista_id_var VIRGULA IDENT
    {
-      insere_vs_tabela(token, nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      insere_vs_tabela(token, nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples, nivel_lexico));
       ++num_vars;
    } |
    IDENT
    {
-      insere_vs_tabela(token, nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples));
+      insere_vs_tabela(token, nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples, nivel_lexico));
       ++num_vars;
    }
 ;
 
 lista_idents:
-   lista_idents VIRGULA IDENT |
-   IDENT
+   lista_idents VIRGULA IDENT {
+      ++num_vars;
+      if(tipo_parametro==parametro_referencia || tipo_parametro==parametro_valor)
+         insere_pf_tabela(token, nivel_lexico, tipo_parametro);
+   } |
+   IDENT {
+      ++num_vars;
+      if(tipo_parametro==parametro_referencia || tipo_parametro==parametro_valor)
+         insere_pf_tabela(token, nivel_lexico, tipo_parametro);
+   }
 ;
 
 parte_declara_subrotinas:
@@ -124,20 +135,23 @@ declara_procedimento:
       sprintf(aux_string, "DSVS %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
       insere_procedimento_tabela(token, nivel_lexico+1);
-      sprintf(aux_string, "ENPR %d", nivel_lexico);
+      sprintf(aux_string, "ENPR %d", nivel_lexico + 1);
       geraCodigo(tabela_de_simbolos->info_procedimento.rotulo, aux_string);
    }
    declara_parametros PONTO_E_VIRGULA bloco {
-      sprintf(aux_string, "RTPR %d, n", nivel_lexico);
+      // free_simbolo_na_tabela();
+      sprintf(aux_string, "RTPR %d, n", nivel_lexico + 1);
       geraCodigo(NULL, aux_string);
-
       geraCodigo(pilha_rotulos->rotulo, "NADA");
-      DESEMPILHA_ROTULO
+      DESEMPILHA_ROTULO(pilha_rotulos)
    }
 ;
 
 declara_parametros:
-   ABRE_PARENTESES parametros_formais FECHA_PARENTESES |
+   ABRE_PARENTESES parametros_formais FECHA_PARENTESES {
+      tipo_parametro = 0;
+      atualiza_parametros_procedimento();
+   } |
 ;
 
 parametros_formais:
@@ -146,8 +160,20 @@ parametros_formais:
 ;
 
 secao_de_parametros_formais:
-   VAR lista_idents DOIS_PONTOS IDENT |
-   lista_idents DOIS_PONTOS IDENT
+   VAR {
+      tipo_parametro = parametro_referencia;
+      num_vars = 0;
+   } lista_idents DOIS_PONTOS IDENT {
+      altera_tipo_tabela(inteiro, num_vars);
+   }
+   |
+   {
+      tipo_parametro = parametro_valor;
+      num_vars = 0;
+   }
+   lista_idents DOIS_PONTOS IDENT {
+      altera_tipo_tabela(inteiro, num_vars);
+   }
 ;
 
 comando_composto:
@@ -178,14 +204,19 @@ comando_com_ident:
 
 chamada_procedimento:
    {
-      l_elem = busca_simbolo_na_tabela(aux_string, procedimento);
+      EMPILHA_FUNCAO(busca_simbolo_na_tabela(aux_string, procedimento))
       if(!l_elem){
          sprintf(aux_string, "O procedimento %s nao foi encontrada", aux_string);
          imprimeErro(aux_string);
       }
-      sprintf(aux_string, "CHPR %s, %d", l_elem->info_procedimento.rotulo, nivel_lexico);
+      num_vars = 0;
+   } lista_parametros {
+      if(sizeof(*(l_elem->info_procedimento.parametros)) / sizeof(l_elem->info_procedimento.parametros[0]) != num_vars)
+         imprimeErro("O número de parâmtros não coincide com declaração");
+      sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
       geraCodigo(NULL, aux_string);
-   } lista_parametros
+      DESEMPILHA_SIMPLES(pilha_procedimentos)
+   }
 ;
 
 lista_parametros:
@@ -193,13 +224,23 @@ lista_parametros:
 ;
 
 lista_de_expressoes:
-   lista_de_expressoes VIRGULA expressao |
-   expressao
+   lista_de_expressoes VIRGULA expressao_simples {
+      if (pilha_expressao->tipo != pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_variavel)
+         imprimeErro("os tipos de variavel nao coincidem");
+      free(stack_pop((stack_t **)&pilha_expressao));
+      ++num_vars;
+   } |
+   expressao_simples {
+      if (pilha_expressao->tipo != pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_variavel)
+         imprimeErro("os tipos de variavel nao coincidem");
+      free(stack_pop((stack_t **)&pilha_expressao));
+      ++num_vars;
+   }
 ;
 
 atribuicao:
    ATRIBUICAO {
-      l_elem = busca_simbolo_na_tabela(aux_string, variavel_simples);
+      l_elem = busca_simbolo_na_tabela(aux_string, variavel_ou_parametro);
       if(!l_elem){
          sprintf(aux_string, "A variavel %s nao foi encontrada", aux_string);
          imprimeErro(aux_string);
@@ -209,7 +250,7 @@ atribuicao:
       if(encontra_tipo(l_elem) != pilha_expressao->tipo)
          imprimeErro("os tipos de variavel nao coincidem");
       free(stack_pop((stack_t **)&pilha_expressao));
-      sprintf(aux_string, "ARMZ %d,%d", l_elem->info_variavel.nivel_lexico, l_elem->info_variavel.deslocamento);
+      sprintf(aux_string, "%s %d,%d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
       geraCodigo(NULL, aux_string);
 
    }
@@ -290,9 +331,18 @@ fator:
    IDENT {
       // FAZER BUSCA DO TOKEN E ADICIONAR A PILHA DE TIPOS
       elem_aux = busca_simbolo_na_tabela(token, variavel_simples);
+      if(pilha_procedimentos){
+         if(pilha_expressao)
+            imprimeErro("Argumento inválido");
+         if (pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_parametro == parametro_referencia)
+            sprintf(aux_string, "CREN %d,%d", elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+         else
+            sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+      }
+      else
+         sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
       stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
       pilha_expressao->tipo=encontra_tipo(elem_aux);
-      sprintf(aux_string, "CRVL %d,%d", elem_aux->info_variavel.nivel_lexico, elem_aux->info_variavel.deslocamento);
       geraCodigo(NULL, aux_string);
    } |
    NUMERO {
@@ -325,11 +375,11 @@ continuacao_condicional:
       geraCodigo(pilha_rotulos->next->rotulo, "NADA");
    } comando_sem_rotulo {
       geraCodigo(pilha_rotulos->rotulo, "NADA");
-      DESEMPILHA_ROTULO
-      DESEMPILHA_ROTULO
+      DESEMPILHA_ROTULO(pilha_rotulos)
+      DESEMPILHA_ROTULO(pilha_rotulos)
    } | {
       geraCodigo(pilha_rotulos->rotulo, "NADA");
-      DESEMPILHA_ROTULO
+      DESEMPILHA_ROTULO(pilha_rotulos)
    }
 ;
 
@@ -349,8 +399,8 @@ comando_repetitivo:
       sprintf(aux_string, "DSVS %s", pilha_rotulos->next->rotulo);
       geraCodigo(NULL, aux_string);
       geraCodigo(pilha_rotulos->rotulo, "NADA");
-      DESEMPILHA_ROTULO
-      DESEMPILHA_ROTULO
+      DESEMPILHA_ROTULO(pilha_rotulos)
+      DESEMPILHA_ROTULO(pilha_rotulos)
    }
 ;
 

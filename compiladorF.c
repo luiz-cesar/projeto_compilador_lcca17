@@ -32,7 +32,8 @@
   }                                                     \
   simbolo = malloc(sizeof(struct t_id));                \
   simbolo->nome = malloc(strlen(ident) * sizeof(char)); \
-  strcpy(simbolo->nome, ident);
+  strcpy(simbolo->nome, ident);                         \
+  simbolo->nivel_lexico = nivel_lexico;
 
 #define PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS stack_push((stack_t **)&tabela_de_simbolos, (stack_t *)simbolo);
 
@@ -94,7 +95,6 @@ int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento)
   EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
 
   simbolo->tipo = variavel_simples;
-  simbolo->info_variavel.nivel_lexico = nivel_lexico;
   simbolo->info_variavel.deslocamento = deslocamento;
 
   PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
@@ -107,13 +107,21 @@ int insere_procedimento_tabela(char *ident, int nivel_lexico)
   char *rotulo = gera_rotulo();
 
   EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
-
   simbolo->tipo = procedimento;
-  simbolo->info_procedimento.nivel_lexico = nivel_lexico;
   simbolo->info_procedimento.rotulo = rotulo;
 
   PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
 
+  return 1;
+}
+
+int insere_pf_tabela(char *ident, int nivel_lexico, tipos_parametro tipo_parametro)
+{
+  EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
+  simbolo->tipo = parametro_formal;
+  simbolo->info_parametro.tipo_parametro = tipo_parametro;
+
+  PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
   return 1;
 }
 
@@ -152,6 +160,9 @@ id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo)
   {
     if (strcmp(simb->nome, ident) == 0)
     {
+      if (tipo == variavel_ou_parametro && (simb->tipo == variavel_simples || simb->tipo == parametro_formal))
+        return simb;
+
       if (simb->tipo == tipo)
         return simb;
       else
@@ -170,27 +181,66 @@ void altera_tipo_tabela(tipos_simbolo tipo_var, int qtd_simbolos)
   id identificador = tabela_de_simbolos;
   for (int i = 0; i < qtd_simbolos; ++i)
   {
-    identificador->info_variavel.tipo_variavel = tipo_var;
+    if (identificador->tipo == variavel_simples)
+      identificador->info_variavel.tipo_variavel = tipo_var;
+    if (identificador->tipo == parametro_formal)
+      identificador->info_parametro.tipo_variavel = tipo_var;
     identificador = identificador->next;
   }
 }
 
 tipos_var encontra_tipo(id simb)
 {
-  if (simb->tipo == variavel_simples)
+  if (simb->tipo == variavel_simples || simb->tipo == parametro_formal)
     return simb->info_variavel.tipo_variavel;
 }
 
-int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo)
+int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo, int nivel_lexico)
 {
   int num_simbolos_ultima_funcao = 0;
 
   id simbolo = tabela_de_simbolos;
-  while (simbolo && simbolo->tipo != procedimento)
+  while (simbolo && (simbolo->tipo != procedimento || nivel_lexico > -1 && simbolo->nivel_lexico > nivel_lexico))
   {
     if (simbolo->tipo == tipo_simbolo)
       ++num_simbolos_ultima_funcao;
     simbolo = simbolo->next;
   }
   return num_simbolos_ultima_funcao;
+}
+
+int libera_simbolos_internos_de_funcao(int nivel_lexico)
+{
+  id simbolo = tabela_de_simbolos;
+  while (simbolo && (simbolo->tipo != procedimento || simbolo->nivel_lexico > nivel_lexico))
+  {
+    simbolo = simbolo->next;
+    free_simbolo_na_tabela(1);
+  }
+}
+
+int atualiza_parametros_procedimento()
+{
+  id simbolo = tabela_de_simbolos;
+  id simbolo_procedimento;
+  int deslocamento = -4;
+  int num_parametros = 0;
+  while (simbolo && simbolo->tipo != procedimento)
+  {
+    simbolo->info_parametro.deslocamento = deslocamento;
+    --deslocamento;
+    ++num_parametros;
+    simbolo = simbolo->next;
+  }
+  simbolo_procedimento = simbolo;
+  simbolo_procedimento->info_procedimento.parametros = malloc(sizeof(t_parametro_formal) * num_parametros);
+  simbolo_procedimento->info_procedimento.qtd_parametros = num_parametros;
+  simbolo = tabela_de_simbolos;
+  while (simbolo && simbolo->tipo != procedimento)
+  {
+    --num_parametros;
+    memcpy(&(simbolo_procedimento->info_procedimento.parametros[num_parametros]), &(simbolo->info_parametro), sizeof(t_parametro_formal));
+    simbolo = simbolo->next;
+  }
+  return 1;
 }
