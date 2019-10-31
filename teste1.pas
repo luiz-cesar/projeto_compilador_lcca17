@@ -20,6 +20,7 @@ procedure a(x: integer);
     d:=p+b-5;
     end
 begin
+    goto 100;
     100: m:=2;
     z:=3;
     n:=aiai(2);

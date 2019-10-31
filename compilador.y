@@ -231,8 +231,17 @@ comando:
 comando_sem_rotulo:
    IDENT {strcpy(aux_string, token);} comando_com_ident |
    comando_condicional |
+   desvio |
    comando_repetitivo |
    comando_composto
+;
+
+desvio:
+   GOTO NUMERO {
+      elem_aux = busca_simbolo_na_tabela(token, label);
+      sprintf(aux_string, "DSVR %s, %d, %d", elem_aux->info_rotulo.rotulo, elem_aux->nivel_lexico, nivel_lexico);
+      geraCodigo(NULL, aux_string);
+   };
 ;
 
 comando_com_ident:

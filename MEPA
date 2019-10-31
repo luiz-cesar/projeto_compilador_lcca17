@@ -36,6 +36,7 @@ R005: NADA
       DMEM  5
       RTPR 1, n
 R003: NADA 
+      DSVR R000, 0, 0
 R000: ENRT 0, 3 
       CRCT 2
       ARMZ 0,0
