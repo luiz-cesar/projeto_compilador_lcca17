@@ -79,6 +79,7 @@ typedef enum simbolos
   simb_or,
   simb_and,
   simb_procedure,
+  simb_function
 } simbolos;
 
 /*********** DEFINICOES PARA VARIAVEIS SIMPLES ***********/
@@ -123,6 +124,7 @@ typedef struct
   int qtd_variaveis_simples;
   int qtd_procedimentos_e_funcoes;
   int qtd_parametros;
+  tipos_var tipo_retorno;
   t_parametro_formal *parametros;
 } t_procedimento;
 
@@ -132,9 +134,11 @@ typedef struct
 typedef enum
 {
   procedimento,
+  funcao,
   variavel_simples,
   parametro_formal,
   variavel_ou_parametro,
+  variavel_ou_funcao_ou_param,
 } tipos_simbolo;
 
 // Atributos de um simbolo
@@ -185,7 +189,7 @@ int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento);
 
 int insere_pf_tabela(char *ident, int nivel_lexico, tipos_parametro tipo_parametro);
 
-int insere_procedimento_tabela(char *ident, int nivel_lexico);
+int insere_procedimento_tabela(char *ident, int nivel_lexico, tipos_simbolo tipo_simbolo);
 
 void free_simbolo_na_tabela(int qtd);
 
@@ -198,6 +202,8 @@ tipos_var encontra_tipo(id simb);
 int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo, int nivel_lexico);
 
 int atualiza_parametros_procedimento();
+
+int atualiza_retorno_funcao(tipos_simbolo tipo_var);
 
 /* -------------------------------------------------------------------
 * variaveis globais

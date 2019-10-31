@@ -102,12 +102,12 @@ int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento)
   return 1;
 }
 
-int insere_procedimento_tabela(char *ident, int nivel_lexico)
+int insere_procedimento_tabela(char *ident, int nivel_lexico, tipos_simbolo tipo_simbolo)
 {
   char *rotulo = gera_rotulo();
 
   EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
-  simbolo->tipo = procedimento;
+  simbolo->tipo = tipo_simbolo;
   simbolo->info_procedimento.rotulo = rotulo;
 
   PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
@@ -162,14 +162,21 @@ id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo)
     {
       if (tipo == variavel_ou_parametro && (simb->tipo == variavel_simples || simb->tipo == parametro_formal))
         return simb;
-
+      if (tipo == variavel_ou_funcao_ou_param && (simb->tipo == variavel_simples || simb->tipo == funcao || simb->tipo == parametro_formal))
+        return simb;
       if (simb->tipo == tipo)
         return simb;
       else
+        // *************
+        // imprimir erro
+        // *************
         return NULL;
     }
     simb = simb->next;
   }
+  // *************
+  // imprimir erro
+  // *************
 }
 
 /* -------------------------------------------------------------------
@@ -200,19 +207,21 @@ int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo, int nivel_
   int num_simbolos_ultima_funcao = 0;
 
   id simbolo = tabela_de_simbolos;
-  while (simbolo && (simbolo->tipo != procedimento || nivel_lexico > -1 && simbolo->nivel_lexico > nivel_lexico))
+  while (simbolo && ((simbolo->tipo != procedimento && simbolo->tipo != funcao) || nivel_lexico > -1 && simbolo->nivel_lexico > nivel_lexico))
   {
     if (simbolo->tipo == tipo_simbolo)
       ++num_simbolos_ultima_funcao;
     simbolo = simbolo->next;
   }
+  if (simbolo && simbolo->tipo == funcao)
+    --num_simbolos_ultima_funcao;
   return num_simbolos_ultima_funcao;
 }
 
 int libera_simbolos_internos_de_funcao(int nivel_lexico)
 {
   id simbolo = tabela_de_simbolos;
-  while (simbolo && (simbolo->tipo != procedimento || simbolo->nivel_lexico > nivel_lexico))
+  while (simbolo && ((simbolo->tipo != procedimento && simbolo->tipo != funcao) || simbolo->nivel_lexico > nivel_lexico))
   {
     simbolo = simbolo->next;
     free_simbolo_na_tabela(1);
@@ -225,7 +234,7 @@ int atualiza_parametros_procedimento()
   id simbolo_procedimento;
   int deslocamento = -4;
   int num_parametros = 0;
-  while (simbolo && simbolo->tipo != procedimento)
+  while (simbolo && (simbolo->tipo != procedimento && simbolo->tipo != funcao))
   {
     simbolo->info_parametro.deslocamento = deslocamento;
     --deslocamento;
@@ -236,11 +245,28 @@ int atualiza_parametros_procedimento()
   simbolo_procedimento->info_procedimento.parametros = malloc(sizeof(t_parametro_formal) * num_parametros);
   simbolo_procedimento->info_procedimento.qtd_parametros = num_parametros;
   simbolo = tabela_de_simbolos;
-  while (simbolo && simbolo->tipo != procedimento)
+  while (simbolo && (simbolo->tipo != procedimento && simbolo->tipo != funcao))
   {
     --num_parametros;
     memcpy(&(simbolo_procedimento->info_procedimento.parametros[num_parametros]), &(simbolo->info_parametro), sizeof(t_parametro_formal));
     simbolo = simbolo->next;
   }
   return 1;
+}
+
+int atualiza_retorno_funcao(tipos_simbolo tipo_var)
+{
+  int deslocamento = 0;
+  id simbolo_funcao = tabela_de_simbolos;
+  while (simbolo_funcao && simbolo_funcao->tipo != funcao)
+    simbolo_funcao = simbolo_funcao->next;
+  simbolo_funcao->info_procedimento.tipo_retorno = tipo_var;
+  id simbolo = malloc(sizeof(struct t_id));
+  simbolo->nome = malloc(strlen(simbolo_funcao->nome) * sizeof(char));
+  strcpy(simbolo->nome, simbolo_funcao->nome);
+
+  simbolo->tipo = variavel_simples;
+  simbolo->info_variavel.deslocamento = -4 - simbolo_funcao->info_procedimento.qtd_parametros;
+  simbolo->nivel_lexico = simbolo_funcao->nivel_lexico;
+  PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
 }

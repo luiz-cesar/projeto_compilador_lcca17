@@ -1,5 +1,10 @@
 program exemplo75 (input, output);
 var m,n,z :  integer;
+function aiai(g: integer): integer;
+    var me, mata: integer;
+    begin
+        aiai := 2;
+    end
 procedure a(x: integer);
     var p,b,c,d,e :  integer;
     procedure aa(var y: integer);
@@ -16,7 +21,7 @@ procedure a(x: integer);
 begin
     m:=2;
     z:=3;
-    n:=m;
+    n:=aiai(2);
     n:=m+n;
     a(m);
     while 1=1 do

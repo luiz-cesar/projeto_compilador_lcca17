@@ -40,7 +40,7 @@ tipo_pilha_procedimentos pilha_procedimentos = NULL;
 %token IGUAL DIFERENTE MENOR MENOR_IGUAL MAIOR MAIOR_IGUAL
 %token IF THEN ELSE WHILE DO
 %token AND OR
-%token PROCEDURE
+%token PROCEDURE FUNCTION
 
 %%
 
@@ -124,7 +124,7 @@ lista_idents:
 ;
 
 parte_declara_subrotinas:
-   // declara_funcao |
+   declara_funcao |
    declara_procedimento
 ;
 
@@ -134,17 +134,35 @@ declara_procedimento:
       GERA_E_EMPILHA_ROTULO
       sprintf(aux_string, "DSVS %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
-      insere_procedimento_tabela(token, nivel_lexico+1);
+      insere_procedimento_tabela(token, nivel_lexico+1, procedimento);
       sprintf(aux_string, "ENPR %d", nivel_lexico + 1);
       geraCodigo(tabela_de_simbolos->info_procedimento.rotulo, aux_string);
    }
    declara_parametros PONTO_E_VIRGULA bloco {
-      // free_simbolo_na_tabela();
       sprintf(aux_string, "RTPR %d, n", nivel_lexico + 1);
       geraCodigo(NULL, aux_string);
       geraCodigo(pilha_rotulos->rotulo, "NADA");
       DESEMPILHA_ROTULO(pilha_rotulos)
    }
+;
+
+declara_funcao:
+   FUNCTION
+   IDENT {
+      GERA_E_EMPILHA_ROTULO
+      sprintf(aux_string, "DSVS %s", pilha_rotulos->rotulo);
+      geraCodigo(NULL, aux_string);
+      insere_procedimento_tabela(token, nivel_lexico+1, funcao);
+      sprintf(aux_string, "ENPR %d", nivel_lexico + 1);
+      geraCodigo(tabela_de_simbolos->info_procedimento.rotulo, aux_string);
+   } declara_parametros DOIS_PONTOS IDENT {
+      atualiza_retorno_funcao(inteiro);
+   } PONTO_E_VIRGULA bloco {
+      sprintf(aux_string, "RTPR %d, n", nivel_lexico + 1);
+      geraCodigo(NULL, aux_string);
+      geraCodigo(pilha_rotulos->rotulo, "NADA");
+      DESEMPILHA_ROTULO(pilha_rotulos)
+   };
 ;
 
 declara_parametros:
@@ -202,16 +220,61 @@ comando_com_ident:
    chamada_procedimento
 ;
 
+comando_fator_com_ident:
+   IDENT {strcpy(aux_string, token);} comando_pos_ident;
+;
+
+comando_pos_ident:
+   ABRE_PARENTESES {
+      EMPILHA_FUNCAO(busca_simbolo_na_tabela(aux_string, funcao))
+      geraCodigo(NULL, "AMEM 1");
+      num_vars = 0;
+   } lista_de_expressoes FECHA_PARENTESES {
+      if(pilha_procedimentos->item->info_procedimento.qtd_parametros != num_vars)
+         imprimeErro("O número de parâmtros não coincide com declaração");
+      sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
+      geraCodigo(NULL, aux_string);
+      stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
+      pilha_expressao->tipo=pilha_procedimentos->item->info_procedimento.tipo_retorno;
+      DESEMPILHA_SIMPLES(pilha_procedimentos)
+   } | {
+      elem_aux = busca_simbolo_na_tabela(aux_string, variavel_ou_funcao_ou_param);
+      if(elem_aux->tipo == funcao){
+         EMPILHA_FUNCAO(busca_simbolo_na_tabela(token, funcao))
+         geraCodigo(NULL, "AMEM 1");
+         num_vars = 0;
+         if(pilha_procedimentos->item->info_procedimento.qtd_parametros != num_vars)
+            imprimeErro("O número de parâmtros não coincide com declaração");
+         sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
+         geraCodigo(NULL, aux_string);
+         stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
+         pilha_expressao->tipo=pilha_procedimentos->item->info_procedimento.tipo_retorno;
+         DESEMPILHA_SIMPLES(pilha_procedimentos)
+      }
+      else {
+         if(pilha_procedimentos){
+            if(pilha_expressao)
+               imprimeErro("Argumento inválido");
+            if (pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_parametro == parametro_referencia)
+               sprintf(aux_string, "CREN %d,%d", elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+            else
+               sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+         }
+         else
+            sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+         stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
+         pilha_expressao->tipo=encontra_tipo(elem_aux);
+         geraCodigo(NULL, aux_string);
+      }
+   }
+;
+
 chamada_procedimento:
    {
       EMPILHA_FUNCAO(busca_simbolo_na_tabela(aux_string, procedimento))
-      if(!l_elem){
-         sprintf(aux_string, "O procedimento %s nao foi encontrada", aux_string);
-         imprimeErro(aux_string);
-      }
       num_vars = 0;
    } lista_parametros {
-      if(sizeof(*(l_elem->info_procedimento.parametros)) / sizeof(l_elem->info_procedimento.parametros[0]) != num_vars)
+      if(pilha_procedimentos->item->info_procedimento.qtd_parametros != num_vars)
          imprimeErro("O número de parâmtros não coincide com declaração");
       sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
       geraCodigo(NULL, aux_string);
@@ -220,7 +283,7 @@ chamada_procedimento:
 ;
 
 lista_parametros:
-   ABRE_PARENTESES lista_de_expressoes FECHA_PARENTESES |
+   ABRE_PARENTESES lista_de_expressoes FECHA_PARENTESES
 ;
 
 lista_de_expressoes:
@@ -328,29 +391,13 @@ termo:
 ;
 
 fator:
-   IDENT {
-      // FAZER BUSCA DO TOKEN E ADICIONAR A PILHA DE TIPOS
-      elem_aux = busca_simbolo_na_tabela(token, variavel_simples);
-      if(pilha_procedimentos){
-         if(pilha_expressao)
-            imprimeErro("Argumento inválido");
-         if (pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_parametro == parametro_referencia)
-            sprintf(aux_string, "CREN %d,%d", elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
-         else
-            sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
-      }
-      else
-         sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
-      stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
-      pilha_expressao->tipo=encontra_tipo(elem_aux);
-      geraCodigo(NULL, aux_string);
-   } |
    NUMERO {
       stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
       pilha_expressao->tipo=inteiro;
       sprintf(aux_string, "CRCT %s", token);
       geraCodigo(NULL, aux_string);
-   }
+   } |
+   comando_fator_com_ident
 ;
 
 comando_condicional:
