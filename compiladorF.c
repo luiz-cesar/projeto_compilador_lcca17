@@ -125,6 +125,18 @@ int insere_pf_tabela(char *ident, int nivel_lexico, tipos_parametro tipo_paramet
   return 1;
 }
 
+int insere_rotulo_tabela(char *ident, int nivel_lexico)
+{
+  char *rotulo = gera_rotulo();
+
+  EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
+  simbolo->tipo = label;
+  simbolo->info_rotulo.rotulo = rotulo;
+
+  PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
+  return 1;
+}
+
 // int desaloca_procedimento_tabela(){
 //   id simbolo = tabela_de_simbolos;
 // }

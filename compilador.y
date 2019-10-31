@@ -41,6 +41,7 @@ tipo_pilha_procedimentos pilha_procedimentos = NULL;
 %token IF THEN ELSE WHILE DO
 %token AND OR
 %token PROCEDURE FUNCTION
+%token LABEL, GOTO
 
 %%
 
@@ -70,6 +71,20 @@ bloco:
 parte_declaracoes:
    parte_declaracoes parte_declara_subrotinas |
    parte_declaracoes parte_declara_vars |
+   parte_declaracoes parte_declara_rotulos |
+;
+
+parte_declara_rotulos:
+   LABEL declara_rotulos PONTO_E_VIRGULA
+;
+
+declara_rotulos:
+   declara_rotulos VIRGULA NUMERO  {
+      insere_rotulo_tabela(token, nivel_lexico);
+   } |
+   NUMERO {
+      insere_rotulo_tabela(token, nivel_lexico);
+   }
 ;
 
 parte_declara_vars:
@@ -201,10 +216,15 @@ comando_composto:
 comandos:
    comandos comando PONTO_E_VIRGULA |
    comando PONTO_E_VIRGULA |
-   // COMANDO VAZIO PARA TESTES
 ;
 
 comando:
+   NUMERO {
+      l_elem = busca_simbolo_na_tabela(token, label);
+      sprintf(aux_string, "ENRT %d, %d", nivel_lexico, encontra_qtd_simbolos_antes_de_funcao(variavel_simples, nivel_lexico));
+      geraCodigo(l_elem->info_rotulo.rotulo, aux_string);
+
+   } DOIS_PONTOS comando_sem_rotulo |
    comando_sem_rotulo
 ;
 

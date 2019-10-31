@@ -1,5 +1,6 @@
 program exemplo75 (input, output);
 var m,n,z :  integer;
+label 100;
 function aiai(g: integer): integer;
     var me, mata: integer;
     begin
@@ -19,7 +20,7 @@ procedure a(x: integer);
     d:=p+b-5;
     end
 begin
-    m:=2;
+    100: m:=2;
     z:=3;
     n:=aiai(2);
     n:=m+n;

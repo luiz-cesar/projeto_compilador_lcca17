@@ -79,7 +79,9 @@ typedef enum simbolos
   simb_or,
   simb_and,
   simb_procedure,
-  simb_function
+  simb_function,
+  simb_label,
+  simb_goto
 } simbolos;
 
 /*********** DEFINICOES PARA VARIAVEIS SIMPLES ***********/
@@ -128,6 +130,14 @@ typedef struct
   t_parametro_formal *parametros;
 } t_procedimento;
 
+/*********** DEFINICOES PARA ROTULOS ***************/
+
+// Atributos de um rotulo
+typedef struct
+{
+  char *rotulo;
+} t_rotulo;
+
 /*********** DEFINICOES PARA TABELA DE SIMBOLOS **********/
 
 // Enumeracao para os tipos de simbolos
@@ -137,6 +147,7 @@ typedef enum
   funcao,
   variavel_simples,
   parametro_formal,
+  label,
   variavel_ou_parametro,
   variavel_ou_funcao_ou_param,
 } tipos_simbolo;
@@ -152,6 +163,7 @@ typedef struct t_id
     t_variavel_simples info_variavel;
     t_procedimento info_procedimento;
     t_parametro_formal info_parametro;
+    t_rotulo info_rotulo;
   };
 } * id;
 
@@ -190,6 +202,8 @@ int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento);
 int insere_pf_tabela(char *ident, int nivel_lexico, tipos_parametro tipo_parametro);
 
 int insere_procedimento_tabela(char *ident, int nivel_lexico, tipos_simbolo tipo_simbolo);
+
+int insere_rotulo_tabela(char *ident, int nivel_lexico);
 
 void free_simbolo_na_tabela(int qtd);
 
