@@ -11,12 +11,10 @@ var n, s, i :  integer;
          s:=s-q
    end;
 begin
-   read (n);
    s:=0; i:=0;
    while i<=n do
    begin
-      soma; write(s); i:=i+1
+      soma;  i:=i+1
    end
 end.
-      
-      
+

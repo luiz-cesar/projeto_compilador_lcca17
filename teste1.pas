@@ -6,7 +6,7 @@ function aiai(g: integer): integer;
     begin
         aiai := 2;
     end
-procedure a(x: integer);
+procedure a(x: integer; var aas: integer);
     var p,b,c,d,e :  integer;
     procedure aa(var y: integer);
         var dsa, asd,dsa: integer;

@@ -39,8 +39,11 @@
   elem_aux->tipo == parametro_formal && elem_aux->info_parametro.tipo_parametro == parametro_referencia ? "CRVI" : "CRVL"
 
 #define EMPILHA_FUNCAO(NOME_VAR)                                                                   \
+  if (!NOME_VAR)                                                                                   \
+    imprimeErro("Função não encontrada");                                                          \
   stack_push((stack_t **)&pilha_procedimentos, malloc(sizeof(struct t_tipo_pilha_procedimentos))); \
-  pilha_procedimentos->item = NOME_VAR;
+  pilha_procedimentos->item = NOME_VAR;                                                            \
+  pilha_procedimentos->conta_parametros = 0;
 
 #define DESEMPILHA_SIMPLES(NOME_VAR) \
   free(stack_pop((stack_t **)&NOME_VAR));
@@ -81,7 +84,9 @@ typedef enum simbolos
   simb_procedure,
   simb_function,
   simb_label,
-  simb_goto
+  simb_goto,
+  simb_read,
+  simb_write,
 } simbolos;
 
 /*********** DEFINICOES PARA VARIAVEIS SIMPLES ***********/
@@ -185,6 +190,7 @@ typedef struct t_tipo_pilha_procedimentos
 {
   struct t_tipo_pilha_procedimentos *next;
   id item;
+  int conta_parametros;
 } * tipo_pilha_procedimentos;
 
 /* -------------------------------------------------------------------
@@ -218,6 +224,8 @@ int encontra_qtd_simbolos_antes_de_funcao(tipos_simbolo tipo_simbolo, int nivel_
 int atualiza_parametros_procedimento();
 
 int atualiza_retorno_funcao(tipos_simbolo tipo_var);
+
+int libera_simbolos_internos_de_funcao(int nivel_lexico);
 
 /* -------------------------------------------------------------------
 * variaveis globais

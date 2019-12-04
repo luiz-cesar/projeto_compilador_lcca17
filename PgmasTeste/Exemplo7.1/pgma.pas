@@ -1,4 +1,4 @@
-program teste (input, output); 
+program teste (input, output);
 var m, n, s : integer;
 begin
    read(m,n);
@@ -9,7 +9,4 @@ begin
       write (m,s);
       m:=m+1
    end
-   
-
-   
 end.

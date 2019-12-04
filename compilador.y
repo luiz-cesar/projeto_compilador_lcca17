@@ -21,6 +21,8 @@ char aux_string[128];
 // Implementar nivel lexico em stack
 int nivel_lexico = -1;
 
+int somente_identificador = 1;
+
 id l_elem, elem_aux;
 
 tipo_expressao pilha_expressao = NULL;
@@ -41,7 +43,8 @@ tipo_pilha_procedimentos pilha_procedimentos = NULL;
 %token IF THEN ELSE WHILE DO
 %token AND OR
 %token PROCEDURE FUNCTION
-%token LABEL, GOTO
+%token LABEL GOTO
+%token READ WRITE
 
 %%
 
@@ -139,8 +142,8 @@ lista_idents:
 ;
 
 parte_declara_subrotinas:
-   declara_funcao |
-   declara_procedimento
+   declara_funcao PONTO_E_VIRGULA |
+   declara_procedimento PONTO_E_VIRGULA
 ;
 
 declara_procedimento:
@@ -154,7 +157,7 @@ declara_procedimento:
       geraCodigo(tabela_de_simbolos->info_procedimento.rotulo, aux_string);
    }
    declara_parametros PONTO_E_VIRGULA bloco {
-      sprintf(aux_string, "RTPR %d, n", nivel_lexico + 1);
+      sprintf(aux_string, "RTPR %d, %d", nivel_lexico + 1, tabela_de_simbolos->info_procedimento.qtd_parametros);
       geraCodigo(NULL, aux_string);
       geraCodigo(pilha_rotulos->rotulo, "NADA");
       DESEMPILHA_ROTULO(pilha_rotulos)
@@ -173,7 +176,7 @@ declara_funcao:
    } declara_parametros DOIS_PONTOS IDENT {
       atualiza_retorno_funcao(inteiro);
    } PONTO_E_VIRGULA bloco {
-      sprintf(aux_string, "RTPR %d, n", nivel_lexico + 1);
+      sprintf(aux_string, "RTPR %d, %d", nivel_lexico + 1, tabela_de_simbolos->info_procedimento.qtd_parametros);
       geraCodigo(NULL, aux_string);
       geraCodigo(pilha_rotulos->rotulo, "NADA");
       DESEMPILHA_ROTULO(pilha_rotulos)
@@ -210,12 +213,13 @@ secao_de_parametros_formais:
 ;
 
 comando_composto:
-   T_BEGIN comandos T_END
+   T_BEGIN comandos T_END |
+   T_BEGIN comandos PONTO_E_VIRGULA T_END
 ;
 
 comandos:
-   comandos comando PONTO_E_VIRGULA |
-   comando PONTO_E_VIRGULA |
+   comandos PONTO_E_VIRGULA comando |
+   comando
 ;
 
 comando:
@@ -229,11 +233,13 @@ comando:
 ;
 
 comando_sem_rotulo:
+   impressao |
+   leitura |
    IDENT {strcpy(aux_string, token);} comando_com_ident |
    comando_condicional |
    desvio |
    comando_repetitivo |
-   comando_composto
+   comando_composto |
 ;
 
 desvio:
@@ -257,9 +263,8 @@ comando_pos_ident:
    ABRE_PARENTESES {
       EMPILHA_FUNCAO(busca_simbolo_na_tabela(aux_string, funcao))
       geraCodigo(NULL, "AMEM 1");
-      num_vars = 0;
    } lista_de_expressoes FECHA_PARENTESES {
-      if(pilha_procedimentos->item->info_procedimento.qtd_parametros != num_vars)
+      if(pilha_procedimentos->item->info_procedimento.qtd_parametros != pilha_procedimentos->conta_parametros)
          imprimeErro("O número de parâmtros não coincide com declaração");
       sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
       geraCodigo(NULL, aux_string);
@@ -271,8 +276,7 @@ comando_pos_ident:
       if(elem_aux->tipo == funcao){
          EMPILHA_FUNCAO(busca_simbolo_na_tabela(token, funcao))
          geraCodigo(NULL, "AMEM 1");
-         num_vars = 0;
-         if(pilha_procedimentos->item->info_procedimento.qtd_parametros != num_vars)
+         if(pilha_procedimentos->item->info_procedimento.qtd_parametros != pilha_procedimentos->conta_parametros)
             imprimeErro("O número de parâmtros não coincide com declaração");
          sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
          geraCodigo(NULL, aux_string);
@@ -282,10 +286,12 @@ comando_pos_ident:
       }
       else {
          if(pilha_procedimentos){
-            if(pilha_expressao)
-               imprimeErro("Argumento inválido");
-            if (pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_parametro == parametro_referencia)
+            if (pilha_procedimentos->item->info_procedimento.parametros[pilha_procedimentos->conta_parametros].tipo_parametro == parametro_referencia){
+               if(!somente_identificador)
+                  imprimeErro("Argumento inválido");
+               somente_identificador = 0;
                sprintf(aux_string, "CREN %d,%d", elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+            }
             else
                sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
          }
@@ -301,10 +307,9 @@ comando_pos_ident:
 chamada_procedimento:
    {
       EMPILHA_FUNCAO(busca_simbolo_na_tabela(aux_string, procedimento))
-      num_vars = 0;
    } lista_parametros {
-      if(pilha_procedimentos->item->info_procedimento.qtd_parametros != num_vars)
-         imprimeErro("O número de parâmtros não coincide com declaração");
+      if(pilha_procedimentos->item->info_procedimento.qtd_parametros != pilha_procedimentos->conta_parametros)
+         imprimeErro("O número de parâmetros não coincide com declaração");
       sprintf(aux_string, "CHPR %s, %d", pilha_procedimentos->item->info_procedimento.rotulo, nivel_lexico);
       geraCodigo(NULL, aux_string);
       DESEMPILHA_SIMPLES(pilha_procedimentos)
@@ -312,21 +317,27 @@ chamada_procedimento:
 ;
 
 lista_parametros:
-   ABRE_PARENTESES lista_de_expressoes FECHA_PARENTESES
+   ABRE_PARENTESES lista_de_expressoes FECHA_PARENTESES |
 ;
 
 lista_de_expressoes:
    lista_de_expressoes VIRGULA expressao_simples {
-      if (pilha_expressao->tipo != pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_variavel)
-         imprimeErro("os tipos de variavel nao coincidem");
-      free(stack_pop((stack_t **)&pilha_expressao));
-      ++num_vars;
+      if(pilha_procedimentos){
+         somente_identificador = 1;
+         if (pilha_expressao->tipo != pilha_procedimentos->item->info_procedimento.parametros[pilha_procedimentos->conta_parametros].tipo_variavel)
+            imprimeErro("os tipos de variavel nao coincidem");
+         free(stack_pop((stack_t **)&pilha_expressao));
+         ++pilha_procedimentos->conta_parametros;
+      };
    } |
    expressao_simples {
-      if (pilha_expressao->tipo != pilha_procedimentos->item->info_procedimento.parametros[num_vars].tipo_variavel)
-         imprimeErro("os tipos de variavel nao coincidem");
-      free(stack_pop((stack_t **)&pilha_expressao));
-      ++num_vars;
+      if(pilha_procedimentos){
+         somente_identificador = 1;
+         if (pilha_expressao->tipo != pilha_procedimentos->item->info_procedimento.parametros[pilha_procedimentos->conta_parametros].tipo_variavel)
+            imprimeErro("os tipos de variavel nao coincidem");
+         free(stack_pop((stack_t **)&pilha_expressao));
+         ++pilha_procedimentos->conta_parametros;
+      };
    }
 ;
 
@@ -349,17 +360,8 @@ atribuicao:
 ;
 
 expressao:
-   expressao_simples {
-      if(pilha_expressao->tipo != booleano)
-         imprimeErro("a expressao deve retornar um booleano");
-      free(stack_pop((stack_t **)&pilha_expressao));
-      ;
-   } |
-   relacao {
-      if(pilha_expressao->tipo != booleano)
-         imprimeErro("a expressao deve retornar um booleano");
-      free(stack_pop((stack_t **)&pilha_expressao));
-   }
+   expressao_simples |
+   relacao
 ;
 
 relacao:
@@ -377,7 +379,7 @@ relacao:
    } |
    expressao_simples MENOR_IGUAL expressao_simples {
       COMPARA_T_RELACAO_BOOLEANA_E_POP
-      geraCodigo(NULL, "CMIG");
+      geraCodigo(NULL, "CMEG");
    } |
    expressao_simples MAIOR expressao_simples {
       COMPARA_T_RELACAO_BOOLEANA_E_POP
@@ -426,21 +428,21 @@ fator:
       sprintf(aux_string, "CRCT %s", token);
       geraCodigo(NULL, aux_string);
    } |
+   ABRE_PARENTESES expressao FECHA_PARENTESES |
    comando_fator_com_ident
 ;
 
 comando_condicional:
    IF expressao {
+      if(pilha_expressao->tipo != booleano)
+         imprimeErro("a expressao deve retornar um booleano");
+      free(stack_pop((stack_t **)&pilha_expressao));
+
       GERA_E_EMPILHA_ROTULO
       sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
    }
-   IF expressao {
-      GERA_E_EMPILHA_ROTULO
-      sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
-      geraCodigo(NULL, aux_string);
-   }
-   THEN comando_sem_rotulo continuacao_condicional
+   THEN  comando_sem_rotulo continuacao_condicional
 ;
 
 continuacao_condicional:
@@ -467,6 +469,10 @@ comando_repetitivo:
       geraCodigo(pilha_rotulos->rotulo, aux_string);
    }
    expressao {
+      if(pilha_expressao->tipo != booleano)
+         imprimeErro("a expressao deve retornar um booleano");
+      free(stack_pop((stack_t **)&pilha_expressao));
+
       GERA_E_EMPILHA_ROTULO
       sprintf(aux_string, "DSVF %s", pilha_rotulos->rotulo);
       geraCodigo(NULL, aux_string);
@@ -478,6 +484,49 @@ comando_repetitivo:
       DESEMPILHA_ROTULO(pilha_rotulos)
       DESEMPILHA_ROTULO(pilha_rotulos)
    }
+;
+
+lista_de_expressoes_impressao:
+   lista_de_expressoes_impressao VIRGULA expressao_simples {
+      free(stack_pop((stack_t **)&pilha_expressao));
+      geraCodigo(NULL, "IMPR");
+   } |
+   expressao_simples {
+      free(stack_pop((stack_t **)&pilha_expressao));
+      geraCodigo(NULL, "IMPR");
+   }
+;
+
+lista_variaveis_leitura:
+   lista_variaveis_leitura VIRGULA IDENT {
+      l_elem = busca_simbolo_na_tabela(token, variavel_ou_parametro);
+      if(!l_elem){
+         sprintf(aux_string, "A variavel %s nao foi encontrada", token);
+         imprimeErro(aux_string);
+      }
+      geraCodigo(NULL, "LEIT");
+      sprintf(aux_string, "%s %d,%d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
+      geraCodigo(NULL, aux_string);
+   }
+   | IDENT {
+      l_elem = busca_simbolo_na_tabela(token, variavel_ou_parametro);
+      if(!l_elem){
+         sprintf(aux_string, "A variavel %s nao foi encontrada", token);
+         imprimeErro(aux_string);
+      }
+      geraCodigo(NULL, "LEIT");
+      sprintf(aux_string, "%s %d,%d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
+      geraCodigo(NULL, aux_string);
+   }
+;
+
+leitura:
+   READ ABRE_PARENTESES lista_variaveis_leitura FECHA_PARENTESES
+;
+
+
+impressao:
+   WRITE ABRE_PARENTESES lista_de_expressoes_impressao FECHA_PARENTESES
 ;
 
 %%

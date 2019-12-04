@@ -177,92 +177,107 @@ else {
     simbolo = simb_fecha_parenteses;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" fecha_parenteses ");
-          return FECHA_PARENTESES;
+    return FECHA_PARENTESES;
 }
 
 \=  {
     simbolo = simb_igual;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" igual ");
-          return IGUAL;
+    return IGUAL;
 }
 
 \<>  {
     simbolo = simb_diferente;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" diferente ");
-          return DIFERENTE;
+    return DIFERENTE;
 }
 
 \<  {
     simbolo = simb_menor;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" menor ");
-          return MENOR;
+    return MENOR;
 }
 
 \<=  {
     simbolo = simb_menor_igual;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" menor igual ");
-          return MENOR_IGUAL;
+    return MENOR_IGUAL;
 }
 
 \>  {
     simbolo = simb_maior;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" maior ");
-          return MAIOR;
+    return MAIOR;
 }
 
 \>=  {
     simbolo = simb_maior_igual;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" maior igual ");
-          return MAIOR_IGUAL;
+    return MAIOR_IGUAL;
 }
 
 or  {
     simbolo = simb_or;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" or ");
-          return OR;
+    return OR;
 }
 
 and  {
     simbolo = simb_and;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" and ");
-          return AND;
+    return AND;
 }
 
 procedure {
     simbolo = simb_procedure;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" procedure ");
-          return PROCEDURE;
+    return PROCEDURE;
 }
 
 function {
     simbolo = simb_function;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" function ");
-          return FUNCTION;
+    return FUNCTION;
 }
 
 label {
     simbolo = simb_label;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" label ");
-          return LABEL;
+    return LABEL;
 }
 
 goto {
     simbolo = simb_goto;
     strncpy (token, yytext, TAM_TOKEN);
     IMPRIME(" goto ");
-          return GOTO;
+    return GOTO;
 }
+
+read {
+    simbolo = simb_read;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" read ");
+    return READ;
+ }
+
+write {
+    simbolo = simb_write;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" write ");
+    return WRITE;
+ }
+
 
 {ident} {
     simbolo = simb_identificador;

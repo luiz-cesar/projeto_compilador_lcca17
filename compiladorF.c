@@ -105,7 +105,6 @@ int insere_vs_tabela(char *ident, int nivel_lexico, int deslocamento)
 int insere_procedimento_tabela(char *ident, int nivel_lexico, tipos_simbolo tipo_simbolo)
 {
   char *rotulo = gera_rotulo();
-
   EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
   simbolo->tipo = tipo_simbolo;
   simbolo->info_procedimento.rotulo = rotulo;
@@ -137,10 +136,6 @@ int insere_rotulo_tabela(char *ident, int nivel_lexico)
   return 1;
 }
 
-// int desaloca_procedimento_tabela(){
-//   id simbolo = tabela_de_simbolos;
-// }
-
 /* -------------------------------------------------------------------
 * procedimentos genericos da tabela de simbolos
 * ------------------------------------------------------------------- */
@@ -152,12 +147,15 @@ void free_simbolo_na_tabela(int qtd)
   for (int i = 0; i < qtd; ++i)
   {
     simb = (struct t_id *)stack_pop((stack_t **)&tabela_de_simbolos);
-
     switch (simb->tipo)
     {
-    case variavel_simples:
+    case procedimento:
+    case funcao:
+      free(simb->info_procedimento.rotulo);
+      free(simb->info_procedimento.parametros);
       break;
-    default:
+    case label:
+      free(simb->info_rotulo.rotulo);
       break;
     }
     free(simb->nome);
@@ -170,6 +168,7 @@ id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo)
   id simb = tabela_de_simbolos;
   while (simb)
   {
+
     if (strcmp(simb->nome, ident) == 0)
     {
       if (tipo == variavel_ou_parametro && (simb->tipo == variavel_simples || simb->tipo == parametro_formal))
@@ -178,17 +177,10 @@ id busca_simbolo_na_tabela(char *ident, tipos_simbolo tipo)
         return simb;
       if (simb->tipo == tipo)
         return simb;
-      else
-        // *************
-        // imprimir erro
-        // *************
-        return NULL;
     }
     simb = simb->next;
   }
-  // *************
-  // imprimir erro
-  // *************
+  return NULL;
 }
 
 /* -------------------------------------------------------------------
