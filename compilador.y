@@ -18,6 +18,8 @@ void yyerror(const char *s);
 int num_vars;
 char aux_string[128];
 
+int ultimo_tipo;
+
 // Implementar nivel lexico em stack
 int nivel_lexico = -1;
 
@@ -45,6 +47,7 @@ tipo_pilha_procedimentos pilha_procedimentos = NULL;
 %token PROCEDURE FUNCTION
 %token LABEL GOTO
 %token READ WRITE
+%token BOOLEAN INTEGER TRUE FALSE NEGACAO
 
 %%
 
@@ -106,13 +109,17 @@ declara_var:
    {
       sprintf(aux_string, "AMEM  %d", num_vars);
       geraCodigo(NULL, aux_string);
-      altera_tipo_tabela(inteiro, num_vars);
+      altera_tipo_tabela(ultimo_tipo, num_vars);
    }
    PONTO_E_VIRGULA
 ;
 
 tipo:
-   IDENT
+   BOOLEAN {
+      ultimo_tipo = booleano;
+   } | INTEGER {
+      ultimo_tipo = inteiro;
+   }
 ;
 
 lista_id_var:
@@ -173,8 +180,8 @@ declara_funcao:
       insere_procedimento_tabela(token, nivel_lexico+1, funcao);
       sprintf(aux_string, "ENPR %d", nivel_lexico + 1);
       geraCodigo(tabela_de_simbolos->info_procedimento.rotulo, aux_string);
-   } declara_parametros DOIS_PONTOS IDENT {
-      atualiza_retorno_funcao(inteiro);
+   } declara_parametros DOIS_PONTOS tipo {
+      atualiza_retorno_funcao(ultimo_tipo);
    } PONTO_E_VIRGULA bloco {
       sprintf(aux_string, "RTPR %d, %d", nivel_lexico + 1, tabela_de_simbolos->info_procedimento.qtd_parametros);
       geraCodigo(NULL, aux_string);
@@ -199,16 +206,15 @@ secao_de_parametros_formais:
    VAR {
       tipo_parametro = parametro_referencia;
       num_vars = 0;
-   } lista_idents DOIS_PONTOS IDENT {
-      altera_tipo_tabela(inteiro, num_vars);
-   }
-   |
+   } lista_idents DOIS_PONTOS tipo {
+      altera_tipo_tabela(ultimo_tipo, num_vars);
+   } |
    {
       tipo_parametro = parametro_valor;
       num_vars = 0;
    }
-   lista_idents DOIS_PONTOS IDENT {
-      altera_tipo_tabela(inteiro, num_vars);
+   lista_idents DOIS_PONTOS tipo {
+      altera_tipo_tabela(ultimo_tipo, num_vars);
    }
 ;
 
@@ -393,30 +399,32 @@ relacao:
 
 expressao_simples:
    expressao_simples MAIS termo {
-      COMPARA_T_EXPRESSAO_E_POP
+      COMPARA_T_EXPRESSAO_E_POP(inteiro)
       geraCodigo(NULL, "SOMA");
    } |
    expressao_simples MENOS termo {
-      COMPARA_T_EXPRESSAO_E_POP
+      COMPARA_T_EXPRESSAO_E_POP(inteiro)
       geraCodigo(NULL, "SUBT");
    } |
    expressao_simples OR termo {
-      COMPARA_T_EXPRESSAO_E_POP
+      COMPARA_T_EXPRESSAO_E_POP(booleano)
+      geraCodigo(NULL, "DISJ");
    } |
    termo
 ;
 
 termo:
    termo ASTERISCO fator {
-      COMPARA_T_EXPRESSAO_E_POP
+      COMPARA_T_EXPRESSAO_E_POP(inteiro)
       geraCodigo(NULL, "MULT");
    } |
    termo DIV fator {
-      COMPARA_T_EXPRESSAO_E_POP
+      COMPARA_T_EXPRESSAO_E_POP(inteiro)
       geraCodigo(NULL, "DIVI");
    } |
    termo AND fator {
-      COMPARA_T_EXPRESSAO_E_POP
+      COMPARA_T_EXPRESSAO_E_POP(booleano)
+      geraCodigo(NULL, "CONJ");
    } |
    fator
 ;
@@ -427,10 +435,29 @@ fator:
       pilha_expressao->tipo=inteiro;
       sprintf(aux_string, "CRCT %s", token);
       geraCodigo(NULL, aux_string);
+   } | booleano {
+      stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
+      pilha_expressao->tipo=booleano;
    } |
    ABRE_PARENTESES expressao FECHA_PARENTESES |
+   NEGACAO fator {
+      if(!pilha_expressao->tipo==booleano)
+         imprimeErro("Tipo inválido");
+      geraCodigo(NULL, "NEGA");
+   } |
    comando_fator_com_ident
 ;
+
+booleano:
+   TRUE {
+      sprintf(aux_string, "CRCT 0");
+      geraCodigo(NULL, aux_string);
+   } | FALSE {
+      sprintf(aux_string, "CRCT 1");
+      geraCodigo(NULL, aux_string);
+   }
+;
+
 
 comando_condicional:
    IF expressao {

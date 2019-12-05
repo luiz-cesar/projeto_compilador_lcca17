@@ -13,10 +13,12 @@
 
 #define TAM_TOKEN 16
 
-#define COMPARA_T_EXPRESSAO_E_POP                           \
+#define COMPARA_T_EXPRESSAO_E_POP(TIPO_FINAL)               \
   if (pilha_expressao->tipo != pilha_expressao->next->tipo) \
     imprimeErro("os tipos de variavel nao coincidem");      \
-  free(stack_pop((stack_t **)&pilha_expressao));
+  free(stack_pop((stack_t **)&pilha_expressao));            \
+  if (pilha_expressao->tipo != TIPO_FINAL)                  \
+    imprimeErro("operacao nao valida para os tipos");
 
 #define COMPARA_T_RELACAO_BOOLEANA_E_POP                    \
   if (pilha_expressao->tipo != pilha_expressao->next->tipo) \
@@ -87,6 +89,11 @@ typedef enum simbolos
   simb_goto,
   simb_read,
   simb_write,
+  simb_boolean,
+  simb_integer,
+  simb_true,
+  simb_false,
+  simb_negacao,
 } simbolos;
 
 /*********** DEFINICOES PARA VARIAVEIS SIMPLES ***********/

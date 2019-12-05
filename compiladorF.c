@@ -108,7 +108,6 @@ int insere_procedimento_tabela(char *ident, int nivel_lexico, tipos_simbolo tipo
   EXECUCAO_BASICA_DA_TABELA_DE_SIMBOLOS
   simbolo->tipo = tipo_simbolo;
   simbolo->info_procedimento.rotulo = rotulo;
-
   PUSH_SIMBOLO_NA_TABELA_DE_SIMBOLOS
 
   return 1;

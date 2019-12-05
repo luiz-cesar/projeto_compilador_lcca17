@@ -1,66 +1,10 @@
       INPP
+      AMEM  1
       AMEM  2
-      DSVS R000
-R001: ENPR 1 
-      AMEM  1
-      CRVL 0,-4
-      CRVL 0,-4
-      MULT
-      ARMZ 1,0
-      CRVL 0,0
-      CRVL 0,1
-      SOMA
-      CRVL 1,0
-      SOMA
-      ARMZ 0,0
-      CRVL 0,0
-      IMPR
-      DMEM  1
-      RTPR 1, 1
-R000: NADA 
-      DSVS R002
-R003: ENPR 1 
-      AMEM  1
-      DSVS R004
-R005: ENPR 2 
-      AMEM  1
-      CRVL 0,0
-      CRVL 1,0
-      SOMA
-      CRVL 1,-4
-      SOMA
-      ARMZ 2,0
-      CRVL 2,0
-      CHPR R001, 2
-      CRVL 2,0
-      ARMZ 0,0
-      DMEM  1
-      RTPR 2, 1
-R004: NADA 
-      CRVL 0,-4
-      CRCT 1
-      SOMA
-      ARMZ 1,0
-      CRVL 1,0
-      CHPR R005, 1
-      CRVL 0,0
-      CRVL 1,0
-      SOMA
-      CHPR R001, 1
-      DMEM  1
-      RTPR 1, 1
-R002: NADA 
-      CRCT 1
-      ARMZ 0,0
-      CRCT 3
-      ARMZ 0,1
-      CRVL 0,1
-      CHPR R003, 0
-      CRVL 0,1
-      CHPR R001, 0
-      CRVL 0,1
-      IMPR
-      CRVL 0,0
-      IMPR
-      DMEM  2
+      CRVL 0, 1
+      CRVL 0, 2
+      DISJ
+      NEGA
+      ARMZ 0, 1
+      DMEM  3
       PARA

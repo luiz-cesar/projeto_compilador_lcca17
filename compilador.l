@@ -278,6 +278,40 @@ write {
     return WRITE;
  }
 
+integer {
+    simbolo = simb_integer;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" integer ");
+    return INTEGER;
+}
+
+boolean {
+    simbolo = simb_boolean;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" boolean ");
+    return BOOLEAN;
+}
+
+true {
+    simbolo = simb_true;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" true ");
+    return TRUE;
+}
+
+false {
+    simbolo = simb_false;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" false ");
+    return FALSE;
+}
+
+not  {
+    simbolo = simb_negacao;
+    strncpy (token, yytext, TAM_TOKEN);
+    IMPRIME(" negacao ");
+    return NEGACAO;
+}
 
 {ident} {
     simbolo = simb_identificador;
