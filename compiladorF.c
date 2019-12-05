@@ -26,7 +26,7 @@
   id simbolo = tabela_de_simbolos;                      \
   while (simbolo)                                       \
   {                                                     \
-    if (simbolo->nome == ident)                         \
+    if (strcmp(simbolo->nome, ident) == 0)              \
       return 0;                                         \
     simbolo = simbolo->next;                            \
   }                                                     \
@@ -81,7 +81,7 @@ int imprimeErro(char *erro)
 char *gera_rotulo()
 {
   char *rotulo = malloc(5 * sizeof(char));
-  sprintf(rotulo, "R%03d", contador_de_rotulos);
+  sprintf(rotulo, "R%02d", contador_de_rotulos);
   ++contador_de_rotulos;
   return rotulo;
 }

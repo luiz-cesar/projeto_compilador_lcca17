@@ -1,0 +1,20 @@
+      INPP
+      AMEM  2
+      DSVS R00
+R01: ENPR 1 
+      AMEM  2
+      CRVL 0, 1
+      CRCT 2
+      CMME
+      DSVF R02
+      CRVL 0, 1
+      ARMZ 1, -5
+      CRCT 0
+      ARMI 0, -4
+      DSVS R03
+R02: NADA 
+      AMEM 1
+      CREN 0, 1
+      CRCT 1
+      SUBT
+      CRVL 1, 0

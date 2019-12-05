@@ -290,13 +290,13 @@ comando_pos_ident:
                if(!somente_identificador)
                   imprimeErro("Argumento inválido");
                somente_identificador = 0;
-               sprintf(aux_string, "CREN %d,%d", elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+               sprintf(aux_string, "CREN %d, %d", elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
             }
             else
-               sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+               sprintf(aux_string, "%s %d, %d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
          }
          else
-            sprintf(aux_string, "%s %d,%d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
+            sprintf(aux_string, "%s %d, %d", COM_CARREGA_ELEM_AUX, elem_aux->nivel_lexico, elem_aux->info_variavel.deslocamento);
          stack_push((stack_t**)&pilha_expressao, malloc(sizeof(struct t_tipo_expressao)));
          pilha_expressao->tipo=encontra_tipo(elem_aux);
          geraCodigo(NULL, aux_string);
@@ -353,7 +353,7 @@ atribuicao:
       if(encontra_tipo(l_elem) != pilha_expressao->tipo)
          imprimeErro("os tipos de variavel nao coincidem");
       free(stack_pop((stack_t **)&pilha_expressao));
-      sprintf(aux_string, "%s %d,%d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
+      sprintf(aux_string, "%s %d, %d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
       geraCodigo(NULL, aux_string);
 
    }
@@ -505,7 +505,7 @@ lista_variaveis_leitura:
          imprimeErro(aux_string);
       }
       geraCodigo(NULL, "LEIT");
-      sprintf(aux_string, "%s %d,%d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
+      sprintf(aux_string, "%s %d, %d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
       geraCodigo(NULL, aux_string);
    }
    | IDENT {
@@ -515,7 +515,7 @@ lista_variaveis_leitura:
          imprimeErro(aux_string);
       }
       geraCodigo(NULL, "LEIT");
-      sprintf(aux_string, "%s %d,%d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
+      sprintf(aux_string, "%s %d, %d", COM_ARMAZENA_L_ELEM, l_elem->nivel_lexico, l_elem->info_variavel.deslocamento);
       geraCodigo(NULL, aux_string);
    }
 ;
